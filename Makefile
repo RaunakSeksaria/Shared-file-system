@@ -27,5 +27,5 @@ re:
 	make clean
 	make all
 
-test: re
-	./run_all.sh
+test:
+	uv run --with pytest --with pexpect python -m pytest tests/
