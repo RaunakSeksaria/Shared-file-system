@@ -260,7 +260,6 @@ static void handle_message(int fd, const struct sockaddr_in *peer, const Message
         return;
     }
     if (strcmp(msg->type, "CLIENT_REGISTER") == 0) {
-        // printf("DEBUG: Received message type=CLIENT_REGISTER from %s\n", ip);
         (void)registry_add("CLIENT", msg->username, msg->payload);
         log_info("nm_client_register", "ip=%s user=%s", ip, msg->username);
         Message ack = {0};
@@ -319,7 +318,6 @@ static void handle_message(int fd, const struct sockaddr_in *peer, const Message
     // Step 6: Handle client commands
     // Parse payload: flags=FLAGS|arg1|arg2|...
     if (strcmp(msg->type, "VIEW") == 0) {
-        // printf("DEBUG: reached here 0 :%d", strcmp(msg->type, "VIEW"));
         
         // Extract flags from payload
         char flags[16] = {0};
@@ -338,7 +336,6 @@ static void handle_message(int fd, const struct sockaddr_in *peer, const Message
         }
         
         log_info("nm_cmd_view", "user=%s flags=%s", msg->username, flags);
-        // printf("DEBUG: reached here 1 :%d", strcmp(flags, "a"));
         handle_view(fd, msg->username, flags);
         return;
     }
@@ -693,17 +690,13 @@ static void handle_message(int fd, const struct sockaddr_in *peer, const Message
 
 // Thread function: read lines, parse, and handle messages until peer closes.
 static void *client_thread(void *arg) {
-    // printf("DEBUG: client_thread started\n");
     ClientConnArg *c = (ClientConnArg*)arg;
     char line[MAX_LINE];
     while (g_running) {
         int n = recv_line(c->fd, line, sizeof(line));
         if (n <= 0) break;
         Message msg;
-        // printf("DEBUG: line received: %s", line);
         if (proto_parse_line(line, &msg) == 0) {
-            // printf("DEBUG: Received message type=%s from %s\n", msg.type, inet_ntoa(c->addr.sin_addr));
-            // printf("DEBUG: message details: %s %s", msg.username, msg.payload);
             handle_message(c->fd, &c->addr, &msg);
         }
     }

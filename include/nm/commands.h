@@ -37,7 +37,7 @@ int handle_view(int client_fd, const char *username, const char *flags);
 //
 // This function:
 // 1. Checks if file already exists in index (return CONFLICT if yes)
-// 2. Selects appropriate SS (round-robin for now)
+// 2. Selects a storage server for the new file
 // 3. Sends CREATE command to SS
 // 4. Waits for ACK from SS
 // 5. Adds file to index with owner = requester

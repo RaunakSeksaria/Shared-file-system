@@ -165,8 +165,7 @@ int file_read(const char *storage_dir, const char *filename,
     const char *norm_filename = normalize_filename(filename);
     char file_path[512];
     snprintf(file_path, sizeof(file_path), "%s/files/%s", storage_dir, norm_filename);
-    snprintf(file_path, sizeof(file_path), "%s/files/%s", storage_dir, norm_filename);
-    
+
     // Open file for reading
     FILE *fp = fopen(file_path, "r");
     if (!fp) {

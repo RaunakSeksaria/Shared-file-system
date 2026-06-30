@@ -577,7 +577,6 @@ static int load_owner_from_ss(FileEntry *entry) {
 // Returns: SS username, or NULL if no SS available
 // Handle VIEW command
 int handle_view(int client_fd, const char *username, const char *flags) {
-    // printf("DEBUG: handle_view called with username=%s flags=%s\n", username, flags);
     if (!username || !client_fd) {
         return -1;
     }
@@ -600,7 +599,6 @@ int handle_view(int client_fd, const char *username, const char *flags) {
     int filtered_count = 0;
     
     // Load owner from SS metadata for files that don't have it set
-    // printf("DEBUG: SHOW_ALL :%d total_count=%d\n", show_all, total_count);
     for (int i = 0; i < total_count; i++) {
         if (all_files[i]->owner[0] == '\0') {
             // Owner not set - load from SS metadata
@@ -615,7 +613,6 @@ int handle_view(int client_fd, const char *username, const char *flags) {
         }
     } else {
         // Show files owned by user
-        // printf("DEBUG: %d\n",total_count);;
         // fflush(stdout);
         for (int i = 0; i < total_count; i++) {
             log_info("nm_view_check_owner", "file=%s owner=%s user=%s",
@@ -859,9 +856,7 @@ int handle_delete(int client_fd, const char *username, const char *filename) {
         return send_error_response(client_fd, "", username, &err);
     }
     
-    // Check if user is owner
-    // Note: Full ACL check would require loading metadata from SS
-    // For now, we check index owner field
+    // Only the file's owner may delete it (per spec); ownership is tracked in the index.
     if (strcmp(entry->owner, username) != 0) {
         Error err = error_create(ERR_UNAUTHORIZED, "User '%s' is not the owner of file '%s'", username, filename);
         return send_error_response(client_fd, "", username, &err);
@@ -964,11 +959,10 @@ int handle_info(int client_fd, const char *username, const char *filename) {
         load_owner_from_ss(entry);
     }
     
-    // Note: Full ACL check would require loading metadata from SS
-    // For now, we allow if user is owner (simplified)
+    // TODO(access-control): INFO does not enforce read access yet — the full ACL
+    // lives on the SS and is not consulted here. Access tests will drive the fix.
     if (strcmp(entry->owner, username) != 0) {
-        // Could check read access here via ACL, but for now just check owner
-        // Future: Load ACL from SS metadata and check read access
+        // Non-owners are currently allowed; see TODO above.
     }
     
     // Update last accessed timestamp

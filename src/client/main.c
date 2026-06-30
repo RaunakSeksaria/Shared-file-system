@@ -42,7 +42,6 @@ static int send_command_and_receive(const ParsedCommand *cmd) {
         printf("Error: Failed to send command to NM\n");
         return -1;
     }
-    // printf("DEBUG: Sent command: %s", msg_buf);
     
     // Receive response
     char resp_buf[MAX_LINE];

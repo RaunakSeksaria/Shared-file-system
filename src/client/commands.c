@@ -197,7 +197,6 @@ int format_command_message(const ParsedCommand *cmd, const char *username,
     }
     // For APPROVEACCESSREQUEST / APPROVEACCR: request_id
     else if (strcmp(message_type, "APPROVEACCESSREQUEST") == 0) {
-        // printf("DEBUG: reached here\n");
         if (cmd->argc >= 1) {
             strncpy(payload, cmd->args[0], sizeof(payload) - 1);
         } else {
