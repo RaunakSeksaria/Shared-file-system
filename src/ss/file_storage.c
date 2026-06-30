@@ -191,8 +191,9 @@ int file_read_all(const char *storage_dir, const char *filename,
                   char **out_buf, size_t *out_len) {
     if (!storage_dir || !filename || !out_buf) return -1;
 
+    const char *norm_filename = normalize_filename(filename);
     char file_path[512];
-    snprintf(file_path, sizeof(file_path), "%s/files/%s", storage_dir, filename);
+    snprintf(file_path, sizeof(file_path), "%s/files/%s", storage_dir, norm_filename);
 
     FILE *fp = fopen(file_path, "r");
     if (!fp) {
@@ -580,11 +581,12 @@ int metadata_update_last_modified(const char *storage_dir, const char *filename)
     meta.last_modified = time(NULL);
     
     // Also update file size and word/char counts
-    char content[65536];  // Max 64KB for now
+    char *content = NULL;
     size_t actual_size;
-    if (file_read(storage_dir, filename, content, sizeof(content), &actual_size) == 0) {
+    if (file_read_all(storage_dir, filename, &content, &actual_size) == 0) {
         meta.size_bytes = actual_size;
         count_file_stats(content, &meta.word_count, &meta.char_count);
+        free(content);
     }
     
     return metadata_save(storage_dir, filename, &meta);

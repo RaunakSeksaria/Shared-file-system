@@ -439,9 +439,9 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             }
             
             // Read file content
-            char content[65536];  // Max 64KB for now
+            char *content = NULL;
             size_t actual_size = 0;
-            if (file_read(ctx->storage_dir, filename, content, sizeof(content), &actual_size) != 0) {
+            if (file_read_all(ctx->storage_dir, filename, &content, &actual_size) != 0) {
                 char error_buf[MAX_LINE];
                 proto_format_error(cmd_msg.id, username, "SS",
                                   "INTERNAL", "Failed to read file content",
@@ -503,6 +503,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             metadata_update_last_accessed(ctx->storage_dir, filename);
             
             log_info("ss_file_read", "file=%s user=%s size=%zu", filename, username, actual_size);
+            free(content);
             close(client_fd);
             return;
         }
@@ -551,9 +552,9 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             }
             
             // Read file content
-            char content[65536];  // Max 64KB for now
+            char *content = NULL;
             size_t actual_size = 0;
-            if (file_read(ctx->storage_dir, filename, content, sizeof(content), &actual_size) != 0) {
+            if (file_read_all(ctx->storage_dir, filename, &content, &actual_size) != 0) {
                 char error_buf[MAX_LINE];
                 proto_format_error(cmd_msg.id, username, "SS",
                                   "INTERNAL", "Failed to read file content",
@@ -635,15 +636,16 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             metadata_update_last_accessed(ctx->storage_dir, filename);
             
             log_info("ss_file_streamed", "file=%s user=%s words=%d", filename, username, word_count);
+            free(content);
             close(client_fd);
             return;
         }
         else if (strcmp(cmd_msg.type, "GET_FILE") == 0) {
             const char *filename = cmd_msg.payload;
 
-            char content[65536];
+            char *content = NULL;
             size_t actual_size = 0;
-            if (file_read(ctx->storage_dir, filename, content, sizeof(content), &actual_size) != 0) {
+            if (file_read_all(ctx->storage_dir, filename, &content, &actual_size) != 0) {
                 char error_buf[MAX_LINE];
                 proto_format_error(cmd_msg.id, cmd_msg.username, "SS",
                                    "NOT_FOUND", "File not found",
@@ -686,6 +688,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             if (proto_format_line(&stop_msg, stop_buf, sizeof(stop_buf)) == 0) {
                 send_all(client_fd, stop_buf, strlen(stop_buf));
             }
+            free(content);
             close(client_fd);
             return;
         }
@@ -1885,10 +1888,15 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             
             // Write file
             if (strncmp(filename, "metadata/", 9) == 0) {
-                // Metadata file - write directly to metadata directory
+                // Metadata file - write directly to the metadata directory. Create it
+                // first: a fresh replica has no metadata/ dir yet, and without this the
+                // fopen fails and replicated metadata never lands (breaking failover).
+                char meta_dir[2048];
+                snprintf(meta_dir, sizeof(meta_dir), "%s/metadata", ctx->storage_dir);
+                ensure_storage_dir(meta_dir);
                 char meta_path[4096];
                 snprintf(meta_path, sizeof(meta_path), "%s/%s", ctx->storage_dir, filename);
-                
+
                 FILE *fp = fopen(meta_path, "w");
                 if (!fp) {
                     free(content);

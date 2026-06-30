@@ -187,11 +187,20 @@ static void handle_message(int fd, const struct sockaddr_in *peer, const Message
         // Register SS for heartbeat monitoring
         heartbeat_monitor_register_ss(msg->username);
         
-        // Assign replica for replication (ss1 → ss1_backup)
-        // Only try to pair primary servers (not backup servers themselves)
+        // Assign replica for replication (ss1 → ss1_backup). Pairing is keyed on the
+        // primary, so re-run it whenever EITHER side registers; otherwise a backup that
+        // comes up after its primary would never be paired (order-dependent failure).
         size_t username_len = strlen(msg->username);
         int is_backup = (username_len >= 7 && strcmp(msg->username + username_len - 7, "_backup") == 0);
-        if (!is_backup) {
+        if (is_backup) {
+            char primary[MAX_SS_USERNAME];
+            size_t primary_len = username_len - 7;  // strip "_backup"
+            if (primary_len > 0 && primary_len < sizeof(primary)) {
+                memcpy(primary, msg->username, primary_len);
+                primary[primary_len] = '\0';
+                replication_assign_replica(primary);
+            }
+        } else {
             replication_assign_replica(msg->username);
         }
         
