@@ -347,23 +347,25 @@ int index_update_metadata(const char *filename, time_t last_accessed,
 // ===== Folder Management Functions =====
 
 // Add a folder to the index
+// Normalize a folder path to canonical trailing-slash form: "/" stays "/", and
+// "/docs" becomes "/docs/". Folders are stored, looked up, and matched in this
+// form, so every folder operation must normalize through this one helper.
+static void normalize_folder_path(const char *in, char *out, size_t outlen) {
+    size_t len = strlen(in);
+    if (strcmp(in, "/") == 0) {
+        snprintf(out, outlen, "/");
+    } else if (len > 0 && in[len - 1] == '/') {
+        snprintf(out, outlen, "%s", in);
+    } else {
+        snprintf(out, outlen, "%s/", in);
+    }
+}
+
 FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) {
     if (!folder_path) return NULL;
-    
-    // Normalize folder path to have trailing slash (except for "/")
+
     char normalized_path[MAX_FOLDER_PATH];
-    size_t len = strlen(folder_path);
-    
-    if (strcmp(folder_path, "/") == 0) {
-        strcpy(normalized_path, "/");
-    } else if (len > 0 && folder_path[len - 1] == '/') {
-        // Already has trailing slash
-        strncpy(normalized_path, folder_path, sizeof(normalized_path) - 1);
-        normalized_path[sizeof(normalized_path) - 1] = '\0';
-    } else {
-        // Add trailing slash
-        snprintf(normalized_path, sizeof(normalized_path), "%s/", folder_path);
-    }
+    normalize_folder_path(folder_path, normalized_path, sizeof(normalized_path));
     
     // Check if folder already exists
     unsigned int hash = index_hash(normalized_path);
@@ -405,21 +407,9 @@ FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) 
 // Check if a folder exists in the index
 int index_folder_exists(const char *folder_path) {
     if (!folder_path) return 0;
-    
-    // Normalize folder path to have trailing slash (except for "/")
+
     char normalized_path[MAX_FOLDER_PATH];
-    size_t len = strlen(folder_path);
-    
-    if (strcmp(folder_path, "/") == 0) {
-        strcpy(normalized_path, "/");
-    } else if (len > 0 && folder_path[len - 1] == '/') {
-        // Already has trailing slash
-        strncpy(normalized_path, folder_path, sizeof(normalized_path) - 1);
-        normalized_path[sizeof(normalized_path) - 1] = '\0';
-    } else {
-        // Add trailing slash
-        snprintf(normalized_path, sizeof(normalized_path), "%s/", folder_path);
-    }
+    normalize_folder_path(folder_path, normalized_path, sizeof(normalized_path));
     
     unsigned int hash = index_hash(normalized_path);
     FolderEntry *curr = g_folder_index.buckets[hash];
@@ -437,21 +427,9 @@ int index_folder_exists(const char *folder_path) {
 // Get all files in a specific folder (not recursive)
 int index_get_files_in_folder(const char *folder_path, FileEntry **files, int max_files) {
     if (!folder_path || !files || max_files <= 0) return 0;
-    
-    // Normalize folder path to have trailing slash (except for "/")
+
     char normalized_path[MAX_FOLDER_PATH];
-    size_t len = strlen(folder_path);
-    
-    if (strcmp(folder_path, "/") == 0) {
-        strcpy(normalized_path, "/");
-    } else if (len > 0 && folder_path[len - 1] == '/') {
-        // Already has trailing slash
-        strncpy(normalized_path, folder_path, sizeof(normalized_path) - 1);
-        normalized_path[sizeof(normalized_path) - 1] = '\0';
-    } else {
-        // Add trailing slash
-        snprintf(normalized_path, sizeof(normalized_path), "%s/", folder_path);
-    }
+    normalize_folder_path(folder_path, normalized_path, sizeof(normalized_path));
     
     int count = 0;
     
@@ -517,11 +495,14 @@ int index_move_file(const char *filename, const char *old_folder_path,
     // Look up the file
     FileEntry *entry = index_lookup_file(old_full_path);
     if (!entry) return -1;
-    
-    // Update folder path
-    strncpy(entry->folder_path, new_folder_path, sizeof(entry->folder_path) - 1);
+
+    // Store the destination in canonical trailing-slash form so VIEWFOLDER's
+    // normalized lookup matches it (the bug stored "/docs", not "/docs/").
+    char normalized_path[MAX_FOLDER_PATH];
+    normalize_folder_path(new_folder_path, normalized_path, sizeof(normalized_path));
+    strncpy(entry->folder_path, normalized_path, sizeof(entry->folder_path) - 1);
     entry->folder_path[sizeof(entry->folder_path) - 1] = '\0';
-    
+
     return 0;
 }
 
