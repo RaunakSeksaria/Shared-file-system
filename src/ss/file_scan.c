@@ -1,4 +1,4 @@
-#include "file_scan.h"
+#include "ss/file_scan.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "file_storage.h"
+#include "ss/file_storage.h"
 
 // Helper: Recursively scan a directory and its subdirectories
 static void scan_directory_recursive(const char *storage_dir, const char *rel_path, 

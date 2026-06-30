@@ -1,4 +1,4 @@
-#include "log.h"
+#include "common/log.h"
 
 // Implementation of JSON-line logging with UTC timestamps.
 #include <stdarg.h>

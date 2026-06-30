@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "heartbeat_monitor.h"
+#include "nm/heartbeat_monitor.h"
 
 #include <pthread.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../common/log.h"
+#include "common/log.h"
 
 // Global state
 static HeartbeatStatus *g_heartbeat_list = NULL;

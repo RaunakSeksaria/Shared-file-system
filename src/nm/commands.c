@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "commands.h"
+#include "nm/commands.h"
 
 #include <pthread.h>
 #include <stdio.h>
@@ -9,13 +9,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "../common/net.h"
-#include "../common/log.h"
-#include "registry.h"
-#include "access_requests.h"
-#include "replication.h"
-#include "replication_worker.h"
-#include "heartbeat_monitor.h"
+#include "common/net.h"
+#include "common/log.h"
+#include "nm/registry.h"
+#include "nm/access_requests.h"
+#include "nm/replication.h"
+#include "nm/replication_worker.h"
+#include "nm/heartbeat_monitor.h"
 
 #define MAX_SS_CANDIDATES 64
 #define ACL_CACHE_CAPACITY 256

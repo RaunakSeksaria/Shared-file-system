@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L  // For strdup
-#include "commands.h"
+#include "client/commands.h"
 
 #include <stdio.h>
 #include <stdlib.h>

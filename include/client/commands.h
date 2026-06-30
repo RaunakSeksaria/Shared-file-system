@@ -2,7 +2,7 @@
 #define COMMANDS_H
 
 #include <stddef.h>
-#include "../common/protocol.h"
+#include "common/protocol.h"
 
 // Client command parsing and handling
 // Parses user input and formats commands for sending to NM

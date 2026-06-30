@@ -1,13 +1,13 @@
 #define _POSIX_C_SOURCE 200809L
-#include "replication.h"
+#include "nm/replication.h"
 
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "../common/log.h"
-#include "registry.h"
+#include "common/log.h"
+#include "nm/registry.h"
 
 // Global state
 static ReplicationPair *g_repl_pairs = NULL;

@@ -1,5 +1,5 @@
-#include "file_storage.h"
-#include "sentence_parser.h"
+#include "ss/file_storage.h"
+#include "ss/sentence_parser.h"
 
 #include <errno.h>
 #include <stdio.h>

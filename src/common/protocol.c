@@ -1,4 +1,4 @@
-#include "protocol.h"
+#include "common/protocol.h"
 
 // Parser/formatter for the line-based protocol.
 // We split by '|' for the first four fields and assign the remainder to payload.

@@ -6,3 +6,6 @@ bin_nm
 bin_ss
 issues.md
 storage_*/
+.vscode/
+__pycache__/
+.pytest_cache/

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <time.h>
-#include "../common/acl.h"
+#include "common/acl.h"
 
 // File storage module for Storage Server
 // Handles all file operations: create, read, delete, metadata management

@@ -5,18 +5,18 @@ SRC_COMMON=src/common/net.c src/common/log.c src/common/protocol.c src/common/er
 SRC_SS=src/ss/file_scan.c src/ss/file_storage.c src/ss/sentence_parser.c src/ss/runtime_state.c src/ss/write_session.c
 SRC_NM=src/nm/index.c src/nm/access_control.c src/nm/commands.c src/nm/registry.c src/nm/access_requests.c src/nm/heartbeat_monitor.c src/nm/replication.c src/nm/replication_worker.c
 SRC_CLIENT=src/client/commands.c
-INC_COMMON=-Isrc/common -Isrc/ss -Isrc/nm -Isrc/client
+INCLUDES=-Iinclude
 
 all: nm ss client
 
 nm: $(SRC_COMMON) $(SRC_NM) src/nm/main.c
-	$(CC) $(CFLAGS) $(INC_COMMON) -o bin_nm src/nm/main.c $(SRC_COMMON) $(SRC_NM)
+	$(CC) $(CFLAGS) $(INCLUDES) -o bin_nm src/nm/main.c $(SRC_COMMON) $(SRC_NM)
 
 ss: $(SRC_COMMON) $(SRC_SS) src/ss/main.c
-	$(CC) $(CFLAGS) $(INC_COMMON) -o bin_ss src/ss/main.c $(SRC_COMMON) $(SRC_SS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o bin_ss src/ss/main.c $(SRC_COMMON) $(SRC_SS)
 
 client: $(SRC_COMMON) $(SRC_CLIENT) src/client/main.c
-	$(CC) $(CFLAGS) $(INC_COMMON) -o bin_client src/client/main.c $(SRC_COMMON) $(SRC_CLIENT)
+	$(CC) $(CFLAGS) $(INCLUDES) -o bin_client src/client/main.c $(SRC_COMMON) $(SRC_CLIENT)
 
 clean:
 	rm -f bin_nm bin_ss bin_client

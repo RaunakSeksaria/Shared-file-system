@@ -1,4 +1,4 @@
-#include "net.h"
+#include "common/net.h"
 
 // Implementation of simple TCP server/client helpers.
 #include <arpa/inet.h>

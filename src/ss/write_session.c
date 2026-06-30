@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "write_session.h"
+#include "ss/write_session.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -9,9 +9,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../common/log.h"
-#include "file_storage.h"
-#include "runtime_state.h"
+#include "common/log.h"
+#include "ss/file_storage.h"
+#include "ss/runtime_state.h"
 
 typedef struct {
     char **items;

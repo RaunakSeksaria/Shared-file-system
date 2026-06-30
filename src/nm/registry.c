@@ -1,4 +1,4 @@
-#include "registry.h"
+#include "nm/registry.h"
 
 #include <pthread.h>
 #include <stdio.h>

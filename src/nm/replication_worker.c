@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "replication_worker.h"
+#include "nm/replication_worker.h"
 
 #include <pthread.h>
 #include <stdio.h>
@@ -7,11 +7,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../common/log.h"
-#include "../common/net.h"
-#include "../common/protocol.h"
-#include "registry.h"
-#include "replication.h"
+#include "common/log.h"
+#include "common/net.h"
+#include "common/protocol.h"
+#include "nm/registry.h"
+#include "nm/replication.h"
 
 #define MAX_QUEUE_SIZE 1000
 

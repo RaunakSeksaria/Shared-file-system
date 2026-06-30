@@ -1,0 +1,6 @@
+# Ruff configuration for the Python integration test suite.
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "W", "UP", "B"]

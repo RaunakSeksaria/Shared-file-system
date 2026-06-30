@@ -1,4 +1,4 @@
-#include "sentence_parser.h"
+#include "ss/sentence_parser.h"
 
 #include <ctype.h>
 #include <stdio.h>

@@ -2,7 +2,7 @@
 #define WRITE_SESSION_H
 
 #include <stddef.h>
-#include "sentence_parser.h"
+#include "ss/sentence_parser.h"
 
 #define WRITE_SESSION_MAX_FILENAME 256
 #define WRITE_SESSION_MAX_PATH 512

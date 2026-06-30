@@ -1,4 +1,4 @@
-#include "index.h"
+#include "nm/index.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -8,11 +8,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../common/net.h"
-#include "../common/log.h"
-#include "../common/protocol.h"
-#include "../common/errors.h"
-#include "commands.h"
+#include "common/net.h"
+#include "common/log.h"
+#include "common/protocol.h"
+#include "common/errors.h"
+#include "client/commands.h"
 
 // Global: connection to NM (kept open for entire session)
 static int g_nm_fd = -1;

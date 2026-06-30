@@ -1,10 +1,10 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#include "../common/protocol.h"
-#include "../common/errors.h"
-#include "index.h"
-#include "access_control.h"
+#include "common/protocol.h"
+#include "common/errors.h"
+#include "nm/index.h"
+#include "nm/access_control.h"
 
 // Command handlers for Name Server
 // Process client commands and return responses

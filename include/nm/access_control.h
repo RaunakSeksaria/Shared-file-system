@@ -1,8 +1,8 @@
 #ifndef ACCESS_CONTROL_H
 #define ACCESS_CONTROL_H
 
-#include "../common/acl.h"
-#include "../common/errors.h"
+#include "common/acl.h"
+#include "common/errors.h"
 
 // Access Control Enforcement Module for Name Server
 // Provides functions to check file access permissions before operations

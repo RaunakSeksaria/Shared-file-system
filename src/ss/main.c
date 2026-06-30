@@ -10,13 +10,13 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../common/net.h"
-#include "../common/log.h"
-#include "../common/protocol.h"
-#include "file_scan.h"
-#include "file_storage.h"
-#include "write_session.h"
-#include "runtime_state.h"
+#include "common/net.h"
+#include "common/log.h"
+#include "common/protocol.h"
+#include "ss/file_scan.h"
+#include "ss/file_storage.h"
+#include "ss/write_session.h"
+#include "ss/runtime_state.h"
 
 #define DEFAULT_WORKERS 8
 #define WORK_QUEUE_CAP 64

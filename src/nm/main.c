@@ -9,17 +9,17 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../common/net.h"
-#include "../common/log.h"
-#include "../common/protocol.h"
-#include "index.h"
-#include "access_control.h"
-#include "commands.h"
-#include "registry.h"
-#include "access_requests.h"
-#include "heartbeat_monitor.h"
-#include "replication.h"
-#include "replication_worker.h"
+#include "common/net.h"
+#include "common/log.h"
+#include "common/protocol.h"
+#include "nm/index.h"
+#include "nm/access_control.h"
+#include "nm/commands.h"
+#include "nm/registry.h"
+#include "nm/access_requests.h"
+#include "nm/heartbeat_monitor.h"
+#include "nm/replication.h"
+#include "nm/replication_worker.h"
 
 // Argument passed to each connection handler thread.
 typedef struct ClientConnArg {
