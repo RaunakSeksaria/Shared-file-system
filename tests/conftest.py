@@ -149,6 +149,51 @@ class Cluster:
         cmds += [f"WRITE {filename} {sentence}", f"{index} {content}", "ETIRW"]
         return self.client(cmds, username=username)
 
+    def spawn(self, username="alice", timeout=20):
+        """Spawn a client and return the raw pexpect child for step-by-step control
+        (e.g. holding a WRITE lock open while another client tries the same sentence)."""
+        child = pexpect.spawn(
+            str(BIN_CLIENT),
+            ["--nm-host", "127.0.0.1", "--nm-port", str(self.nm_port), "--username", username],
+            encoding="utf-8", timeout=timeout,
+        )
+        try:
+            child.setecho(False)
+            child.waitnoecho(timeout=1)
+        except (pexpect.TIMEOUT, OSError):
+            pass
+        return child
+
+    def restart_ss(self, name):
+        """Kill an SS and start a fresh one on the same storage dir + username."""
+        self.kill(name)
+        storage = self.ss[name]["storage"]
+        port = _free_port()
+        self._spawn(name, [
+            str(BIN_SS),
+            "--nm-host", "127.0.0.1", "--nm-port", str(self.nm_port),
+            "--host", "127.0.0.1", "--client-port", str(port),
+            "--storage", str(storage), "--username", name,
+        ])
+        self.ss[name]["port"] = port
+        assert _wait_port(port), f"SS {name} failed to restart"
+        self._wait_known(name)
+        return name
+
+    def wait_log(self, name, needle, timeout=30.0):
+        """Poll a component's log until `needle` appears (for async failover/heartbeat)."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if needle in self.log(name):
+                return True
+            time.sleep(0.1)
+        return False
+
+    def storage_file(self, ss_name, filename):
+        """Return a file's on-disk content under an SS storage dir, or None."""
+        path = self.ss[ss_name]["storage"] / "files" / filename
+        return path.read_text(errors="ignore") if path.exists() else None
+
     def teardown(self):
         for proc in self.procs.values():
             if proc.poll() is None:
