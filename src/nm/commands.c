@@ -28,6 +28,10 @@ typedef struct {
     int valid;
 } AclCacheEntry;
 
+// The storage server is the source of truth for a file's ACL; this bounded ring cache
+// memoizes recent fetches so the common permission check need not round-trip to the SS
+// every time. Entries are invalidated on any change that affects them (ACL edit, MOVE,
+// DELETE, access-request approval); when full, the ring overwrites its oldest slot.
 static AclCacheEntry g_acl_cache[ACL_CACHE_CAPACITY];
 static int g_acl_cache_next_slot = 0;
 static pthread_mutex_t g_acl_cache_mu = PTHREAD_MUTEX_INITIALIZER;

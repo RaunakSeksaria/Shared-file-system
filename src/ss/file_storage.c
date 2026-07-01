@@ -31,6 +31,9 @@ static int copy_file_atomic(const char *src, const char *dst) {
         }
     }
     if (ferror(in)) result = -1;
+    // Durability: fully flush + fsync the temp file, then rename() it into place, so a
+    // reader only ever sees the complete old or complete new file - never a torn write,
+    // even if the storage server crashes mid-write.
     fflush(out);
     fsync(fileno(out));
     fclose(in);

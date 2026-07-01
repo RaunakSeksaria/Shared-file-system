@@ -43,6 +43,9 @@ typedef struct {
     int nm_fd;           // Connection TO NM (for registration/heartbeat)
     int server_fd;      // Server socket listening on client_port (for commands from NM)
     int running;
+    // Fixed worker pool, not thread-per-connection: a long WRITE or STREAM session (STREAM
+    // sleeps 0.1s per word) must not block the accept loop or other clients' quick commands.
+    // Accepted sockets are queued and drained by the workers.
     int worker_count;
     pthread_t workers[DEFAULT_WORKERS];
     WorkQueue queue;

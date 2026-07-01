@@ -81,6 +81,10 @@ static int allocate_session(FileRuntimeState *state) {
     return state->next_session_id++;
 }
 
+// Per-sentence (not per-file) locking is the core of concurrent editing: different users
+// can edit different sentences of the same file at once; only the same sentence is
+// exclusive. sentence_id is a stable persisted identity, so a held lock survives the
+// re-indexing that happens when an edit adds, removes, or splits a sentence.
 int sentence_lock_acquire(const char *filename, int sentence_id, const char *username, int *out_session_id) {
     if (!filename || !username || sentence_id <= 0) return -1;
     FileRuntimeState *state = find_or_create_state(filename);
