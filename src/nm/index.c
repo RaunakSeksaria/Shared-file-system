@@ -1,9 +1,11 @@
+#define _GNU_SOURCE  /* for PTHREAD_MUTEX_RECURSIVE */
 #include "common/xalloc.h"
 #include "nm/index.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <time.h>
 
 // Global index and cache instances
@@ -11,9 +13,21 @@ FileIndex g_file_index = {0};
 LRUCache g_lru_cache = {0};
 FolderIndex g_folder_index = {0};
 
+/* Thread-per-connection NM: this recursive mutex serializes all access to the
+   shared file/folder index + LRU cache. Recursive because some entry points
+   (index_add_file/move_file/update_metadata) call index_lookup_file while
+   already holding it. Initialized in index_init(). */
+static pthread_mutex_t g_index_mu;
+
 // Initialize the file index and LRU cache
 // Sets up empty hash table and empty cache
 void index_init(void) {
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&g_index_mu, &attr);
+    pthread_mutexattr_destroy(&attr);
+
     // Clear hash table (all buckets are NULL)
     memset(g_file_index.buckets, 0, sizeof(g_file_index.buckets));
     g_file_index.count = 0;
@@ -102,7 +116,8 @@ static void lru_remove_tail(void) {
 FileEntry *index_add_file(const char *filename, const char *owner,
                           const char *ss_host, int ss_client_port,
                           const char *ss_username) {
-    if (!filename) return NULL;
+    pthread_mutex_lock(&g_index_mu);
+    if (!filename) { pthread_mutex_unlock(&g_index_mu); return NULL; }
     
     // Check if file already exists
     FileEntry *existing = index_lookup_file(filename);
@@ -111,12 +126,13 @@ FileEntry *index_add_file(const char *filename, const char *owner,
         if (ss_host) strncpy(existing->ss_host, ss_host, sizeof(existing->ss_host) - 1);
         existing->ss_client_port = ss_client_port;
         if (ss_username) strncpy(existing->ss_username, ss_username, sizeof(existing->ss_username) - 1);
+        pthread_mutex_unlock(&g_index_mu);
         return existing;
     }
     
     // Create new file entry
     FileEntry *entry = (FileEntry *)xcalloc(1, sizeof(FileEntry));
-    if (!entry) return NULL;
+    if (!entry) { pthread_mutex_unlock(&g_index_mu); return NULL; }
     
     // Parse filename to extract folder path and base filename
     // Format can be "/folder/file.txt" or just "file.txt" (root folder)
@@ -173,12 +189,15 @@ FileEntry *index_add_file(const char *filename, const char *owner,
     g_file_index.buckets[hash] = entry;
     g_file_index.count++;
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return entry;
 }
 
 // Remove a file from the index
 int index_remove_file(const char *filename) {
-    if (!filename) return -1;
+    pthread_mutex_lock(&g_index_mu);
+    if (!filename) { pthread_mutex_unlock(&g_index_mu); return -1; }
     
     // Parse input to get folder path and base filename
     char folder_path[MAX_FOLDER_PATH] = "/";
@@ -232,18 +251,22 @@ int index_remove_file(const char *filename) {
             
             free(curr);
             g_file_index.count--;
+            pthread_mutex_unlock(&g_index_mu);
             return 0;
         }
         prev = curr;
         curr = curr->next;
     }
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return -1;  // Not found
 }
 
 // Lookup a file in the index (O(1) average case)
 FileEntry *index_lookup_file(const char *filename) {
-    if (!filename) return NULL;
+    pthread_mutex_lock(&g_index_mu);
+    if (!filename) { pthread_mutex_unlock(&g_index_mu); return NULL; }
     
     // Parse input to get folder path and base filename
     char folder_path[MAX_FOLDER_PATH];
@@ -282,17 +305,21 @@ FileEntry *index_lookup_file(const char *filename) {
                 lru_remove_tail();
             }
             lru_add_to_front(curr);
+            pthread_mutex_unlock(&g_index_mu);
             return curr;
         }
         curr = curr->next;
     }
+    
+    pthread_mutex_unlock(&g_index_mu);
     
     return NULL;  // Not found
 }
 
 // Get all files in the index
 int index_get_all_files(FileEntry **files, int max_files) {
-    if (!files || max_files <= 0) return 0;
+    pthread_mutex_lock(&g_index_mu);
+    if (!files || max_files <= 0) { pthread_mutex_unlock(&g_index_mu); return 0; }
     
     int count = 0;
     
@@ -305,12 +332,15 @@ int index_get_all_files(FileEntry **files, int max_files) {
         }
     }
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return count;
 }
 
 // Get files owned by a specific user
 int index_get_files_by_owner(const char *owner, FileEntry **files, int max_files) {
-    if (!owner || !files || max_files <= 0) return 0;
+    pthread_mutex_lock(&g_index_mu);
+    if (!owner || !files || max_files <= 0) { pthread_mutex_unlock(&g_index_mu); return 0; }
     
     int count = 0;
     
@@ -326,6 +356,8 @@ int index_get_files_by_owner(const char *owner, FileEntry **files, int max_files
         }
     }
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return count;
 }
 
@@ -333,14 +365,17 @@ int index_get_files_by_owner(const char *owner, FileEntry **files, int max_files
 int index_update_metadata(const char *filename, time_t last_accessed,
                           time_t last_modified, size_t size_bytes,
                           int word_count, int char_count) {
+    pthread_mutex_lock(&g_index_mu);
     FileEntry *entry = index_lookup_file(filename);
-    if (!entry) return -1;
+    if (!entry) { pthread_mutex_unlock(&g_index_mu); return -1; }
     
     if (last_accessed > 0) entry->last_accessed = last_accessed;
     if (last_modified > 0) entry->last_modified = last_modified;
     entry->size_bytes = size_bytes;
     entry->word_count = word_count;
     entry->char_count = char_count;
+    
+    pthread_mutex_unlock(&g_index_mu);
     
     return 0;
 }
@@ -363,7 +398,8 @@ static void normalize_folder_path(const char *in, char *out, size_t outlen) {
 }
 
 FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) {
-    if (!folder_path) return NULL;
+    pthread_mutex_lock(&g_index_mu);
+    if (!folder_path) { pthread_mutex_unlock(&g_index_mu); return NULL; }
 
     char normalized_path[MAX_FOLDER_PATH];
     normalize_folder_path(folder_path, normalized_path, sizeof(normalized_path));
@@ -377,6 +413,7 @@ FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) 
             if (ss_username && ss_username[0]) {
                 strncpy(curr->ss_username, ss_username, sizeof(curr->ss_username) - 1);
             }
+            pthread_mutex_unlock(&g_index_mu);
             return curr;
         }
         curr = curr->next;
@@ -384,7 +421,7 @@ FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) 
     
     // Create new folder entry
     FolderEntry *entry = (FolderEntry *)xcalloc(1, sizeof(FolderEntry));
-    if (!entry) return NULL;
+    if (!entry) { pthread_mutex_unlock(&g_index_mu); return NULL; }
     
     size_t copy_len = strlen(normalized_path);
     if (copy_len >= sizeof(entry->folder_path)) {
@@ -402,12 +439,15 @@ FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) 
     g_folder_index.buckets[hash] = entry;
     g_folder_index.count++;
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return entry;
 }
 
 // Check if a folder exists in the index
 int index_folder_exists(const char *folder_path) {
-    if (!folder_path) return 0;
+    pthread_mutex_lock(&g_index_mu);
+    if (!folder_path) { pthread_mutex_unlock(&g_index_mu); return 0; }
 
     char normalized_path[MAX_FOLDER_PATH];
     normalize_folder_path(folder_path, normalized_path, sizeof(normalized_path));
@@ -417,17 +457,21 @@ int index_folder_exists(const char *folder_path) {
     
     while (curr) {
         if (strcmp(curr->folder_path, normalized_path) == 0) {
+            pthread_mutex_unlock(&g_index_mu);
             return 1;
         }
         curr = curr->next;
     }
+    
+    pthread_mutex_unlock(&g_index_mu);
     
     return 0;
 }
 
 // Get all files in a specific folder (not recursive)
 int index_get_files_in_folder(const char *folder_path, FileEntry **files, int max_files) {
-    if (!folder_path || !files || max_files <= 0) return 0;
+    pthread_mutex_lock(&g_index_mu);
+    if (!folder_path || !files || max_files <= 0) { pthread_mutex_unlock(&g_index_mu); return 0; }
 
     char normalized_path[MAX_FOLDER_PATH];
     normalize_folder_path(folder_path, normalized_path, sizeof(normalized_path));
@@ -446,12 +490,15 @@ int index_get_files_in_folder(const char *folder_path, FileEntry **files, int ma
         }
     }
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return count;
 }
 
 // Get all subfolders in a specific folder (not recursive)
 int index_get_subfolders(const char *folder_path, FolderEntry **folders, int max_folders) {
-    if (!folder_path || !folders || max_folders <= 0) return 0;
+    pthread_mutex_lock(&g_index_mu);
+    if (!folder_path || !folders || max_folders <= 0) { pthread_mutex_unlock(&g_index_mu); return 0; }
     
     int count = 0;
     size_t parent_len = strlen(folder_path);
@@ -481,13 +528,16 @@ int index_get_subfolders(const char *folder_path, FolderEntry **folders, int max
         }
     }
     
+    pthread_mutex_unlock(&g_index_mu);
+    
     return count;
 }
 
 // Update file's folder path (for MOVE operation)
 int index_move_file(const char *filename, const char *old_folder_path, 
                     const char *new_folder_path) {
-    if (!filename || !old_folder_path || !new_folder_path) return -1;
+    pthread_mutex_lock(&g_index_mu);
+    if (!filename || !old_folder_path || !new_folder_path) { pthread_mutex_unlock(&g_index_mu); return -1; }
     
     // Build full old path
     char old_full_path[MAX_FOLDER_PATH + MAX_FILENAME];
@@ -495,7 +545,7 @@ int index_move_file(const char *filename, const char *old_folder_path,
     
     // Look up the file
     FileEntry *entry = index_lookup_file(old_full_path);
-    if (!entry) return -1;
+    if (!entry) { pthread_mutex_unlock(&g_index_mu); return -1; }
 
     // Store the destination in canonical trailing-slash form so VIEWFOLDER's
     // normalized lookup matches it (the bug stored "/docs", not "/docs/").
@@ -503,6 +553,8 @@ int index_move_file(const char *filename, const char *old_folder_path,
     normalize_folder_path(new_folder_path, normalized_path, sizeof(normalized_path));
     strncpy(entry->folder_path, normalized_path, sizeof(entry->folder_path) - 1);
     entry->folder_path[sizeof(entry->folder_path) - 1] = '\0';
+
+    pthread_mutex_unlock(&g_index_mu);
 
     return 0;
 }
