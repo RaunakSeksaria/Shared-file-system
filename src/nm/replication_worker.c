@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include "common/xalloc.h"
 #include "nm/replication_worker.h"
 
 #include <pthread.h>
@@ -96,7 +97,7 @@ static int process_job(const ReplicationJob *job) {
         char *content = NULL;
         size_t content_size = 0;
         size_t content_capacity = 4096;
-        content = (char*)malloc(content_capacity);
+        content = (char*)xmalloc(content_capacity);
         if (!content) {
             close(primary_fd);
             log_error("replication_worker_fetch", "Memory allocation failed");
@@ -128,7 +129,7 @@ static int process_job(const ReplicationJob *job) {
                 // Ensure capacity
                 while (content_size + payload_len + 1 > content_capacity) {
                     content_capacity *= 2;
-                    char *new_content = (char*)realloc(content, content_capacity);
+                    char *new_content = (char*)xrealloc(content, content_capacity);
                     if (!new_content) {
                         free(content);
                         close(primary_fd);
@@ -259,7 +260,7 @@ static int process_job(const ReplicationJob *job) {
                 if (proto_parse_line(meta_resp, &meta_msg) == 0 && strcmp(meta_msg.type, "ACK") == 0) {
                     size_t meta_size = (size_t)strtoull(meta_msg.payload, NULL, 10);
                     if (meta_size > 0 && meta_size < 65536) {
-                        char *meta_content = (char*)malloc(meta_size + 1);
+                        char *meta_content = (char*)xmalloc(meta_size + 1);
                         if (meta_content) {
                             size_t meta_received = 0;
                             while (meta_received < meta_size) {
@@ -485,7 +486,7 @@ int replication_worker_queue(ReplicationOp operation,
     }
     
     // Create job
-    ReplicationJob *job = (ReplicationJob *)calloc(1, sizeof(ReplicationJob));
+    ReplicationJob *job = (ReplicationJob *)xcalloc(1, sizeof(ReplicationJob));
     if (!job) {
         pthread_mutex_unlock(&g_queue_mu);
         log_error("replication_worker_queue", "Memory allocation failed");

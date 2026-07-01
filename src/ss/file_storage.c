@@ -1,3 +1,4 @@
+#include "common/xalloc.h"
 #include "ss/file_storage.h"
 #include "ss/sentence_parser.h"
 
@@ -213,7 +214,7 @@ int file_read_all(const char *storage_dir, const char *filename,
         fclose(fp);
         return -1;
     }
-    char *buffer = (char *)malloc((size_t)size + 1);
+    char *buffer = (char *)xmalloc((size_t)size + 1);
     if (!buffer) {
         fclose(fp);
         return -1;
@@ -321,7 +322,7 @@ int metadata_load(const char *storage_dir, const char *filename, FileMetadata *m
     long file_size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     
-    char *file_content = (char *)malloc(file_size + 1);
+    char *file_content = (char *)xmalloc(file_size + 1);
     if (!file_content) {
         fclose(fp);
         return -1;
@@ -1066,7 +1067,7 @@ int checkpoint_list(const char *storage_dir, const char *filename,
     if (!storage_dir || !filename || !entries || !count) return -1;
     
     // Allocate array for entries
-    CheckpointEntry *arr = (CheckpointEntry *)malloc(sizeof(CheckpointEntry) * MAX_CHECKPOINTS_PER_FILE);
+    CheckpointEntry *arr = (CheckpointEntry *)xmalloc(sizeof(CheckpointEntry) * MAX_CHECKPOINTS_PER_FILE);
     if (!arr) return -1;
     
     // Load index

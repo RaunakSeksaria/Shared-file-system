@@ -1,3 +1,4 @@
+#include "common/xalloc.h"
 #include "ss/runtime_state.h"
 
 #include <stdio.h>
@@ -40,7 +41,7 @@ static FileRuntimeState *find_or_create_state(const char *filename) {
         }
         cur = cur->next;
     }
-    FileRuntimeState *node = calloc(1, sizeof(FileRuntimeState));
+    FileRuntimeState *node = xcalloc(1, sizeof(FileRuntimeState));
     if (!node) {
         pthread_mutex_unlock(&g_manager.mu);
         return NULL;

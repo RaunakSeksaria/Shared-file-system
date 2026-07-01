@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include "common/xalloc.h"
 #include "nm/replication.h"
 
 #include <pthread.h>
@@ -78,7 +79,7 @@ int replication_assign_replica(const char *primary_ss) {
     }
     
     // Create new pair
-    ReplicationPair *pair = (ReplicationPair *)calloc(1, sizeof(ReplicationPair));
+    ReplicationPair *pair = (ReplicationPair *)xcalloc(1, sizeof(ReplicationPair));
     if (!pair) {
         pthread_mutex_unlock(&g_repl_mu);
         log_error("replication_assign", "Failed to allocate pair for %s", primary_ss);

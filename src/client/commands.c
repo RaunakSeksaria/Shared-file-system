@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L  // For strdup
+#include "common/xalloc.h"
 #include "client/commands.h"
 
 #include <stdio.h>
@@ -15,7 +16,7 @@ ParsedCommand parse_command(const char *line) {
     }
     
     // Make copy for tokenization
-    char *line_copy = strdup(line);
+    char *line_copy = xstrdup(line);
     if (!line_copy) return cmd;
     
     // Remove trailing newline
@@ -54,7 +55,7 @@ ParsedCommand parse_command(const char *line) {
             size_t flag_len = strlen(flag_str);
             size_t current_flags_len = strlen(cmd.flags);
             if (current_flags_len + flag_len < sizeof(cmd.flags)) {
-                strcat(cmd.flags, flag_str);
+                snprintf(cmd.flags + current_flags_len, sizeof(cmd.flags) - current_flags_len, "%s", flag_str);
                 cmd.has_flags = 1;
             }
         } else {

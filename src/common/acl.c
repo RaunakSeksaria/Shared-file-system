@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L  // For strdup
+#include "common/xalloc.h"
 #include "common/acl.h"
 
 #include <stdio.h>
@@ -191,7 +192,7 @@ int acl_deserialize(ACL *acl, const char *buf) {
     memset(acl, 0, sizeof(ACL));
     
     // Parse line by line
-    char *tmp = strdup(buf);  // Make copy for strtok
+    char *tmp = xstrdup(buf);  // Make copy for strtok
     if (!tmp) return -1;
     
     char *line = strtok(tmp, "\n");

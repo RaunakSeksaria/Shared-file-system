@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include "common/xalloc.h"
 #include "nm/heartbeat_monitor.h"
 
 #include <pthread.h>
@@ -59,7 +60,7 @@ void heartbeat_monitor_register_ss(const char *ss_username) {
     }
     
     // Create new entry
-    HeartbeatStatus *entry = (HeartbeatStatus *)calloc(1, sizeof(HeartbeatStatus));
+    HeartbeatStatus *entry = (HeartbeatStatus *)xcalloc(1, sizeof(HeartbeatStatus));
     if (!entry) {
         pthread_mutex_unlock(&g_heartbeat_mu);
         log_error("heartbeat_monitor_register", "Failed to allocate memory for %s", ss_username);

@@ -1,3 +1,4 @@
+#include "common/xalloc.h"
 #include "nm/index.h"
 
 #include <stdio.h>
@@ -114,7 +115,7 @@ FileEntry *index_add_file(const char *filename, const char *owner,
     }
     
     // Create new file entry
-    FileEntry *entry = (FileEntry *)calloc(1, sizeof(FileEntry));
+    FileEntry *entry = (FileEntry *)xcalloc(1, sizeof(FileEntry));
     if (!entry) return NULL;
     
     // Parse filename to extract folder path and base filename
@@ -128,13 +129,13 @@ FileEntry *index_add_file(const char *filename, const char *owner,
             entry->folder_path[folder_len] = '\0';
         } else {
             // Path too long, default to root
-            strcpy(entry->folder_path, "/");
+            snprintf(entry->folder_path, sizeof(entry->folder_path), "/");
         }
         // Copy just the filename part (after last /)
         strncpy(entry->filename, last_slash + 1, sizeof(entry->filename) - 1);
     } else {
         // No path separator, file is in root folder
-        strcpy(entry->folder_path, "/");
+        snprintf(entry->folder_path, sizeof(entry->folder_path), "/");
         strncpy(entry->filename, filename, sizeof(entry->filename) - 1);
     }
     
@@ -256,13 +257,13 @@ FileEntry *index_lookup_file(const char *filename) {
             memcpy(folder_path, filename, folder_len);
             folder_path[folder_len] = '\0';
         } else {
-            strcpy(folder_path, "/");
+            snprintf(folder_path, sizeof(folder_path), "/");
         }
         strncpy(base_filename, last_slash + 1, sizeof(base_filename) - 1);
         base_filename[sizeof(base_filename) - 1] = '\0';
     } else {
         // No folder path, use root folder
-        strcpy(folder_path, "/");
+        snprintf(folder_path, sizeof(folder_path), "/");
         strncpy(base_filename, filename, sizeof(base_filename) - 1);
         base_filename[sizeof(base_filename) - 1] = '\0';
     }
@@ -382,7 +383,7 @@ FolderEntry *index_add_folder(const char *folder_path, const char *ss_username) 
     }
     
     // Create new folder entry
-    FolderEntry *entry = (FolderEntry *)calloc(1, sizeof(FolderEntry));
+    FolderEntry *entry = (FolderEntry *)xcalloc(1, sizeof(FolderEntry));
     if (!entry) return NULL;
     
     size_t copy_len = strlen(normalized_path);

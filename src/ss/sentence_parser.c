@@ -1,3 +1,4 @@
+#include "common/xalloc.h"
 #include "ss/sentence_parser.h"
 
 #include <ctype.h>
@@ -31,10 +32,10 @@ void sentence_collection_free(SentenceCollection *collection) {
 
 static int append_word(SentenceEntry *entry, const char *start, size_t len) {
     if (len == 0) return 0;
-    SentenceWord *new_words = realloc(entry->words, sizeof(SentenceWord) * (entry->word_count + 1));
+    SentenceWord *new_words = xrealloc(entry->words, sizeof(SentenceWord) * (entry->word_count + 1));
     if (!new_words) return -1;
     entry->words = new_words;
-    char *buffer = (char *)malloc(len + 1);
+    char *buffer = (char *)xmalloc(len + 1);
     if (!buffer) return -1;
     memcpy(buffer, start, len);
     buffer[len] = '\0';
@@ -48,7 +49,7 @@ static int finalize_sentence(SentenceCollection *collection, SentenceEntry *curr
         free_sentence(current);
         return 0;
     }
-    SentenceEntry *new_array = realloc(collection->sentences, sizeof(SentenceEntry) * (collection->count + 1));
+    SentenceEntry *new_array = xrealloc(collection->sentences, sizeof(SentenceEntry) * (collection->count + 1));
     if (!new_array) {
         free_sentence(current);
         return -1;
@@ -99,7 +100,7 @@ int sentence_parse_text(const char *text,
                 // Append delimiter to last word
                 SentenceWord *last = &current.words[current.word_count - 1];
                 size_t old_len = strlen(last->text);
-                char *resized = realloc(last->text, old_len + 2);
+                char *resized = xrealloc(last->text, old_len + 2);
                 if (!resized) {
                     sentence_collection_free(collection);
                     free_sentence(&current);
@@ -139,7 +140,7 @@ int sentence_parse_text(const char *text,
         return -1;
     }
     if (collection->count == 0) {
-        SentenceEntry *arr = realloc(collection->sentences, sizeof(SentenceEntry));
+        SentenceEntry *arr = xrealloc(collection->sentences, sizeof(SentenceEntry));
         if (!arr) {
             sentence_collection_free(collection);
             return -1;
@@ -158,7 +159,7 @@ int sentence_parse_text(const char *text,
 int sentence_render_text(const SentenceCollection *collection, char **out_text, size_t *out_len) {
     if (!collection || !out_text || !out_len) return -1;
     size_t capacity = 1024;
-    char *buffer = (char *)malloc(capacity);
+    char *buffer = (char *)xmalloc(capacity);
     if (!buffer) return -1;
     size_t written = 0;
 
@@ -170,7 +171,7 @@ int sentence_render_text(const SentenceCollection *collection, char **out_text, 
             // Add space if needed
             if (written > 0 && written + len + 1 >= capacity) {
                 capacity *= 2;
-                char *tmp = realloc(buffer, capacity);
+                char *tmp = xrealloc(buffer, capacity);
                 if (!tmp) {
                     free(buffer);
                     return -1;
@@ -178,7 +179,7 @@ int sentence_render_text(const SentenceCollection *collection, char **out_text, 
                 buffer = tmp;
             } else if (written + len + 1 >= capacity) {
                 capacity *= 2;
-                char *tmp = realloc(buffer, capacity);
+                char *tmp = xrealloc(buffer, capacity);
                 if (!tmp) {
                     free(buffer);
                     return -1;
@@ -195,7 +196,7 @@ int sentence_render_text(const SentenceCollection *collection, char **out_text, 
         if (i + 1 < collection->count) {
             if (written + 1 >= capacity) {
                 capacity *= 2;
-                char *tmp = realloc(buffer, capacity);
+                char *tmp = xrealloc(buffer, capacity);
                 if (!tmp) {
                     free(buffer);
                     return -1;

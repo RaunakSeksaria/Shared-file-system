@@ -2,6 +2,7 @@
 // and sends periodic heartbeats.
 // Phase 2: Now includes file scanning and storage management.
 #define _POSIX_C_SOURCE 200809L
+#include "common/xalloc.h"
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -361,7 +362,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
                     
                     size_t new_len = strlen(p2 + 1);
                     if (new_len < sizeof(new_folder)) {
-                        strcpy(new_folder, p2 + 1);
+                        memcpy(new_folder, p2 + 1, new_len + 1);
                     }
                 }
             }
@@ -1715,7 +1716,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
                 fseek(fp, 0, SEEK_END);
                 long size = ftell(fp);
                 fseek(fp, 0, SEEK_SET);
-                content = (char*)malloc(size + 1);
+                content = (char*)xmalloc(size + 1);
                 if (!content) {
                     fclose(fp);
                     char error_buf[MAX_LINE];
@@ -1828,7 +1829,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
             char *content = NULL;
             size_t content_size = 0;
             size_t content_capacity = 4096;
-            content = (char*)malloc(content_capacity);
+            content = (char*)xmalloc(content_capacity);
             if (!content) {
                 char error_buf[MAX_LINE];
                 proto_format_error(cmd_msg.id, cmd_msg.username, "SS",
@@ -1859,7 +1860,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
                     // Ensure capacity
                     while (content_size + payload_len + 1 > content_capacity) {
                         content_capacity *= 2;
-                        char *new_content = (char*)realloc(content, content_capacity);
+                        char *new_content = (char*)xrealloc(content, content_capacity);
                         if (!new_content) {
                             free(content);
                             char error_buf[MAX_LINE];

@@ -1,6 +1,7 @@
 // Name Server (NM): accepts connections from SS/Clients and handles
 // registration and heartbeats in Phase 1. Thread-per-connection model.
 #define _POSIX_C_SOURCE 200809L  // For strdup
+#include "common/xalloc.h"
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <signal.h>
@@ -117,7 +118,7 @@ static void handle_message(int fd, const struct sockaddr_in *peer, const Message
             files_start += 6;  // Skip "files="
             if (*files_start != '\0') {
                 // Parse comma-separated file list and index each file
-                char *file_list = strdup(files_start);  // Make copy for parsing
+                char *file_list = xstrdup(files_start);  // Make copy for parsing
                 if (file_list) {
                     char *saveptr = NULL;
                     char *entry_str = strtok_r(file_list, ",", &saveptr);
@@ -763,7 +764,7 @@ int main(int argc, char **argv) {
         struct sockaddr_in addr; socklen_t alen = sizeof(addr);
         int fd = accept(server_fd, (struct sockaddr*)&addr, &alen);
         if (fd < 0) { if (!g_running) break; continue; }
-        ClientConnArg *c = (ClientConnArg*)calloc(1, sizeof(ClientConnArg));
+        ClientConnArg *c = (ClientConnArg*)xcalloc(1, sizeof(ClientConnArg));
         c->fd = fd; c->addr = addr;
         pthread_t th; (void)pthread_create(&th, NULL, client_thread, c); pthread_detach(th);
     }

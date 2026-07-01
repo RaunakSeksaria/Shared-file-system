@@ -1,6 +1,7 @@
 // Client: Interactive shell for file operations
 // Phase 2: Supports VIEW, CREATE, READ, DELETE, INFO, LIST commands
 #define _POSIX_C_SOURCE 200809L  // For strdup
+#include "common/xalloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,7 +88,7 @@ static int send_command_and_receive(const ParsedCommand *cmd) {
                 printf("%-20s %-15s %-20s %s\n", "Tag", "Creator", "Created", "Size");
                 printf("------------------------------------------------------------\n");
                 
-                char *payload_copy = strdup(resp.payload);
+                char *payload_copy = xstrdup(resp.payload);
                 if (payload_copy) {
                     // Convert \x01 back to \n
                     for (char *p = payload_copy; *p; p++) {

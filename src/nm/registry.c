@@ -1,3 +1,4 @@
+#include "common/xalloc.h"
 #include "nm/registry.h"
 
 #include <pthread.h>
@@ -55,7 +56,7 @@ int registry_add(const char *role, const char *username, const char *payload) {
         }
         entry = entry->next;
     }
-    RegistryEntry *e = (RegistryEntry*)calloc(1, sizeof(RegistryEntry));
+    RegistryEntry *e = (RegistryEntry*)xcalloc(1, sizeof(RegistryEntry));
     snprintf(e->role, sizeof(e->role), "%s", role);
     snprintf(e->username, sizeof(e->username), "%s", username);
     snprintf(e->payload, sizeof(e->payload), "%s", payload ? payload : "");
@@ -212,7 +213,7 @@ int registry_get_ss_candidates(char usernames[][64], int max_entries) {
         return 0;
     }
 
-    SsCandidate *candidates = (SsCandidate*)calloc(ss_count, sizeof(SsCandidate));
+    SsCandidate *candidates = (SsCandidate*)xcalloc(ss_count, sizeof(SsCandidate));
     if (!candidates) {
         pthread_mutex_unlock(&g_registry_mu);
         return 0;

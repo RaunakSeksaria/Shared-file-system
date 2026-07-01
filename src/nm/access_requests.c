@@ -1,3 +1,4 @@
+#include "common/xalloc.h"
 #include "nm/access_requests.h"
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,7 @@ int request_queue_add(const char *filename, const char *folder_path,
     }
     
     // Create new request
-    AccessRequest *req = (AccessRequest *)calloc(1, sizeof(AccessRequest));
+    AccessRequest *req = (AccessRequest *)xcalloc(1, sizeof(AccessRequest));
     if (!req) {
         pthread_mutex_unlock(&g_queue_mutex);
         return -1;
@@ -126,7 +127,7 @@ AccessRequest **request_queue_get_by_owner_filtered(const char *owner,
     }
     
     // Allocate array
-    AccessRequest **results = (AccessRequest **)malloc(count * sizeof(AccessRequest *));
+    AccessRequest **results = (AccessRequest **)xmalloc(count * sizeof(AccessRequest *));
     if (!results) {
         *count_out = 0;
         pthread_mutex_unlock(&g_queue_mutex);

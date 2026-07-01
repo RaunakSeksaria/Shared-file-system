@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include "common/xalloc.h"
 #include "nm/commands.h"
 
 #include <pthread.h>
@@ -216,7 +217,7 @@ static int fetch_file_content_from_ss(const FileEntry *entry, char **content_out
 
     size_t cap = 4096;
     size_t len = 0;
-    char *buffer = (char*)malloc(cap);
+    char *buffer = (char*)xmalloc(cap);
     if (!buffer) {
         close(ss_fd);
         return -1;
@@ -249,7 +250,7 @@ static int fetch_file_content_from_ss(const FileEntry *entry, char **content_out
                 char c = (resp.payload[i] == '\x01') ? '\n' : resp.payload[i];
                 if (len + 1 >= cap) {
                     cap *= 2;
-                    char *tmp = realloc(buffer, cap);
+                    char *tmp = xrealloc(buffer, cap);
                     if (!tmp) {
                         free(buffer);
                         close(ss_fd);
@@ -263,7 +264,7 @@ static int fetch_file_content_from_ss(const FileEntry *entry, char **content_out
     }
     close(ss_fd);
     if (len + 1 >= cap) {
-        char *tmp = realloc(buffer, len + 1);
+        char *tmp = xrealloc(buffer, len + 1);
         if (!tmp) {
             free(buffer);
             return -1;
@@ -303,7 +304,7 @@ static int execute_script_text(const char *script_text, char **output_out, char 
 
     size_t cap = 4096;
     size_t len = 0;
-    char *buffer = (char*)malloc(cap);
+    char *buffer = (char*)xmalloc(cap);
     if (!buffer) {
         pclose(pipe);
         unlink(tmp_template);
@@ -314,7 +315,7 @@ static int execute_script_text(const char *script_text, char **output_out, char 
         size_t chunk_len = strlen(chunk);
         if (len + chunk_len + 1 >= cap) {
             cap = (len + chunk_len + 1) * 2;
-            char *tmp = realloc(buffer, cap);
+            char *tmp = xrealloc(buffer, cap);
             if (!tmp) {
                 free(buffer);
                 pclose(pipe);
@@ -1863,10 +1864,10 @@ int handle_viewaccessrequests(int client_fd, const char *username, const char *p
                 folder_path[folder_len] = '\0';
                 filter_folder_path = folder_path;
             }
-            strcpy(filename, last_slash + 1);
+            memmove(filename, last_slash + 1, strlen(last_slash + 1) + 1);
             filter_filename = filename;
         } else {
-            strcpy(folder_path, "/");
+            snprintf(folder_path, sizeof(folder_path), "/");
             filter_folder_path = folder_path;
             filter_filename = filename;
         }

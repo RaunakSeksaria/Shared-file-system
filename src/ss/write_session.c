@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include "common/xalloc.h"
 #include "ss/write_session.h"
 
 #include <ctype.h>
@@ -36,11 +37,11 @@ static int sentence_entry_clone(const SentenceEntry *src, SentenceEntry *dst) {
         dst->version = src->version;
         return 0;
     }
-    SentenceWord *words = calloc(src->word_count, sizeof(SentenceWord));
+    SentenceWord *words = xcalloc(src->word_count, sizeof(SentenceWord));
     if (!words) return -1;
     for (size_t i = 0; i < src->word_count; i++) {
         if (!src->words[i].text) continue;
-        words[i].text = strdup(src->words[i].text);
+        words[i].text = xstrdup(src->words[i].text);
         if (!words[i].text) {
             for (size_t j = 0; j < i; j++) {
                 free(words[j].text);
@@ -82,7 +83,7 @@ static int split_content_into_tokens(const char *content, TokenList *out) {
             free_tokens(out);
             return -1;
         }
-        char **new_items = realloc(out->items, sizeof(char*) * (out->count + 1));
+        char **new_items = xrealloc(out->items, sizeof(char*) * (out->count + 1));
         if (!new_items) {
             free(token);
             free_tokens(out);
@@ -102,7 +103,7 @@ static int sentence_entry_insert_tokens(SentenceEntry *entry, size_t index,
                                         TokenList *tokens) {
     if (!entry || !tokens || index > entry->word_count) return -1;
     size_t new_count = entry->word_count + tokens->count;
-    SentenceWord *words = realloc(entry->words, sizeof(SentenceWord) * new_count);
+    SentenceWord *words = xrealloc(entry->words, sizeof(SentenceWord) * new_count);
     if (!words) return -1;
     entry->words = words;
     if (index < entry->word_count) {
@@ -142,7 +143,7 @@ static char *sentence_entry_to_string(const SentenceEntry *entry) {
         if (i > 0) total++;
         if (entry->words[i].text) total += strlen(entry->words[i].text);
     }
-    char *buffer = malloc(total + 1);
+    char *buffer = xmalloc(total + 1);
     if (!buffer) return NULL;
     size_t pos = 0;
     for (size_t i = 0; i < entry->word_count; i++) {
@@ -175,7 +176,7 @@ static int render_collection(const SentenceCollection *collection,
             total++;  // space between sentences
         }
     }
-    char *buffer = malloc(total + 1);
+    char *buffer = xmalloc(total + 1);
     if (!buffer) return -1;
     size_t pos = 0;
     for (size_t i = 0; i < collection->count; i++) {
@@ -511,7 +512,7 @@ int write_session_commit(WriteSession *session,
     SentenceEntry *old_entries = file_col.sentences;
     size_t old_count = file_col.count;
     size_t new_count = old_count - 1 + fragment.count;
-    SentenceEntry *new_entries = calloc(new_count, sizeof(SentenceEntry));
+    SentenceEntry *new_entries = xcalloc(new_count, sizeof(SentenceEntry));
     if (!new_entries) {
         sentence_collection_free(&fragment);
         sentence_collection_free(&file_col);
@@ -542,8 +543,8 @@ int write_session_commit(WriteSession *session,
     file_col.sentences = new_entries;
     file_col.count = new_count;
 
-    size_t *offsets = calloc(new_count, sizeof(size_t));
-    size_t *lengths = calloc(new_count, sizeof(size_t));
+    size_t *offsets = xcalloc(new_count, sizeof(size_t));
+    size_t *lengths = xcalloc(new_count, sizeof(size_t));
     if (!offsets || !lengths) {
         free(offsets);
         free(lengths);
