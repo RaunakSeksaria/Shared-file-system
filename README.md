@@ -127,9 +127,10 @@ tests/                 pytest + pexpect integration suite (conftest spins up a c
 
 ## Limitations & roadmap
 
-- **`EXEC` runs on the Name Server, unsandboxed** - the spec has it execute a file's contents
-  as a shell script on the NM. It would run sandboxed (dropped privileges, timeout, resource
-  limits) in production.
+- **`EXEC` runs a file's contents as a shell script on the Name Server** - spec behavior, run
+  inside a sandbox: a forked child with CPU / address-space / output-size limits, a wall-clock
+  timeout, a clean minimal environment, and process-group cleanup. Dropping privileges or a
+  jail (namespaces, seccomp) would harden it further.
 - **Index locking guards structure, not entry lifetime** - the recursive index mutex serializes
   the hash map/LRU, but an entry pointer handed to a caller is used after the lock is released, so
   a concurrent `DELETE` could still race with an in-flight reader (reference counting would close this).

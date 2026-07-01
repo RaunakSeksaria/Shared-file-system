@@ -9,6 +9,11 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <signal.h>
+#include <sys/resource.h>
+#include <sys/select.h>
+#include <sys/wait.h>
 
 #include "common/net.h"
 #include "common/log.h"
@@ -20,6 +25,14 @@
 
 #define MAX_SS_CANDIDATES 64
 #define ACL_CACHE_CAPACITY 256
+
+// EXEC sandbox limits: EXEC runs a file's contents as a shell script on the NM (spec
+// behavior), so it runs in a forked child under these bounds rather than a bare popen().
+#define EXEC_CPU_SECONDS   5                     // RLIMIT_CPU (CPU-time runaway)
+#define EXEC_WALL_SECONDS  10                    // wall-clock kill (e.g. a sleeping script)
+#define EXEC_MEM_BYTES     (256UL * 1024 * 1024) // RLIMIT_AS (address space)
+#define EXEC_FSIZE_BYTES   (16UL * 1024 * 1024)  // RLIMIT_FSIZE (files it writes)
+#define EXEC_MAX_OUTPUT    (1UL * 1024 * 1024)   // cap on captured output
 #define ACL_CACHE_KEY_MAX 768
 
 typedef struct {
@@ -280,8 +293,14 @@ static int fetch_file_content_from_ss(const FileEntry *entry, char **content_out
     return 0;
 }
 
+// Run untrusted `script_text` as a shell script in a sandbox: a forked child with resource
+// limits (CPU time, address space, output file size, no core dumps), a clean minimal
+// environment, and its own process group so the whole tree can be killed on a wall-clock
+// timeout. Combined stdout+stderr is captured and capped. EXEC is spec-mandated to run on
+// the NM; this bounds the blast radius (a production system would also drop privileges).
 static int execute_script_text(const char *script_text, char **output_out, char *error_buf, size_t error_len) {
     if (!script_text || !output_out) return -1;
+
     char tmp_template[] = "/tmp/langexecXXXXXX";
     int fd = mkstemp(tmp_template);
     if (fd < 0) {
@@ -297,43 +316,99 @@ static int execute_script_text(const char *script_text, char **output_out, char 
     }
     close(fd);
 
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd), "/bin/sh %s 2>&1", tmp_template);
-    FILE *pipe = popen(cmd, "r");
-    if (!pipe) {
-        if (error_buf && error_len > 0) snprintf(error_buf, error_len, "popen failed");
+    int pipefd[2];
+    if (pipe(pipefd) != 0) {
+        if (error_buf && error_len > 0) snprintf(error_buf, error_len, "pipe failed");
         unlink(tmp_template);
         return -1;
     }
 
-    size_t cap = 4096;
-    size_t len = 0;
-    char *buffer = (char*)xmalloc(cap);
-    if (!buffer) {
-        pclose(pipe);
+    pid_t pid = fork();
+    if (pid < 0) {
+        if (error_buf && error_len > 0) snprintf(error_buf, error_len, "fork failed");
+        close(pipefd[0]);
+        close(pipefd[1]);
         unlink(tmp_template);
         return -1;
     }
-    char chunk[512];
-    while (fgets(chunk, sizeof(chunk), pipe)) {
-        size_t chunk_len = strlen(chunk);
-        if (len + chunk_len + 1 >= cap) {
-            cap = (len + chunk_len + 1) * 2;
-            char *tmp = xrealloc(buffer, cap);
-            if (!tmp) {
-                free(buffer);
-                pclose(pipe);
-                unlink(tmp_template);
-                return -1;
+
+    if (pid == 0) {
+        // Child: capture stdout+stderr, become its own process group, apply resource
+        // limits, then exec the script with a clean minimal environment.
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
+        setpgid(0, 0);
+
+        struct rlimit rl;
+        rl.rlim_cur = rl.rlim_max = EXEC_CPU_SECONDS;   setrlimit(RLIMIT_CPU, &rl);
+        rl.rlim_cur = rl.rlim_max = EXEC_MEM_BYTES;     setrlimit(RLIMIT_AS, &rl);
+        rl.rlim_cur = rl.rlim_max = EXEC_FSIZE_BYTES;   setrlimit(RLIMIT_FSIZE, &rl);
+        rl.rlim_cur = rl.rlim_max = 0;                  setrlimit(RLIMIT_CORE, &rl);
+
+        char *env[] = { (char *)"PATH=/usr/bin:/bin", NULL };
+        execle("/bin/sh", "sh", tmp_template, (char *)NULL, env);
+        _exit(127);  // exec failed
+    }
+
+    // Parent: set the child's group here too (race-free with the child), then read output
+    // until EOF, the output cap, or the wall-clock deadline.
+    setpgid(pid, pid);
+    close(pipefd[1]);
+
+    size_t cap = 4096, len = 0;
+    char *buffer = (char *)xmalloc(cap);
+    time_t deadline = time(NULL) + EXEC_WALL_SECONDS;
+    int timed_out = 0, truncated = 0;
+
+    for (;;) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(pipefd[0], &rfds);
+        struct timeval tv = { 1, 0 };
+        int sel = select(pipefd[0] + 1, &rfds, NULL, NULL, &tv);
+        if (sel > 0) {
+            char chunk[4096];
+            ssize_t n = read(pipefd[0], chunk, sizeof(chunk));
+            if (n <= 0) break;  // EOF or read error
+            if (len + (size_t)n >= EXEC_MAX_OUTPUT) {
+                n = (ssize_t)(EXEC_MAX_OUTPUT - len - 1);
+                truncated = 1;
             }
-            buffer = tmp;
+            if (n > 0) {
+                if (len + (size_t)n + 1 > cap) {
+                    cap = (len + (size_t)n + 1) * 2;
+                    buffer = (char *)xrealloc(buffer, cap);
+                }
+                memcpy(buffer + len, chunk, (size_t)n);
+                len += (size_t)n;
+            }
+            if (truncated) break;
+        } else if (sel < 0 && errno != EINTR) {
+            break;
         }
-        memcpy(buffer + len, chunk, chunk_len);
-        len += chunk_len;
+        if (time(NULL) >= deadline) { timed_out = 1; break; }
     }
     buffer[len] = '\0';
-    pclose(pipe);
+    close(pipefd[0]);
+
+    // Kill the whole process group (including anything the script forked) and reap.
+    kill(-pid, SIGKILL);
+    int status;
+    waitpid(pid, &status, 0);
     unlink(tmp_template);
+
+    if (timed_out || truncated) {
+        const char *note = timed_out ? "\n[exec: terminated after timeout]\n"
+                                     : "\n[exec: output truncated]\n";
+        size_t nlen = strlen(note);
+        buffer = (char *)xrealloc(buffer, len + nlen + 1);
+        memcpy(buffer + len, note, nlen);
+        len += nlen;
+        buffer[len] = '\0';
+    }
+
     *output_out = buffer;
     return 0;
 }

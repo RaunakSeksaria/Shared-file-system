@@ -215,10 +215,12 @@ sequenceDiagram
 
 ## Limitations and roadmap
 
-- **EXEC runs on the Name Server, unsandboxed.** By design (per the original spec) the file's
-  contents are executed as a shell script on the NM. This is effectively remote code execution;
-  in production it would run in a sandbox with dropped privileges, a timeout, and resource limits.
-  *(Roadmap.)*
+- **EXEC runs untrusted file contents on the Name Server, sandboxed.** By design (per the spec)
+  a file's contents are executed as a shell script on the NM. To bound the blast radius it runs in
+  a forked child with resource limits (CPU time, address space, output file size, no core dumps),
+  a parent-enforced wall-clock timeout, a clean minimal environment, and its own process group so
+  the whole tree is killed on timeout. Dropping privileges or a namespace/seccomp jail would
+  harden it further.
 - **Index locking protects structure, not entry lifetime.** The recursive index mutex serializes
   the hash map / LRU, but a `FileEntry *` returned by a lookup is used by the caller after the
   lock is released, so a concurrent DELETE could race with an in-flight reader. Reference-counting
