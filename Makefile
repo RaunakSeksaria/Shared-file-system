@@ -28,4 +28,21 @@ re:
 	make all
 
 test:
-	uv run --with pytest --with pexpect python -m pytest tests/
+	uv run --with pytest --with pexpect python -m pytest tests/lint:
+	uv run --with ruff ruff check tests/
+
+# Static analysis (advisory): recompile every source under the GCC analyzer.
+# Not -Werror: known false positives on bounded strncpy patterns / inline alloc wrappers.
+ANALYZE_SRC=$(SRC_COMMON) $(SRC_NM) $(SRC_SS) $(SRC_CLIENT) src/nm/main.c src/ss/main.c src/client/main.c
+ANALYZE_FLAGS=-O2 -Wall -Wextra -fanalyzer -pthread -std=c11
+analyze:
+	@for f in $(ANALYZE_SRC); do $(CC) $(ANALYZE_FLAGS) $(INCLUDES) -c $$f -o /dev/null; done
+
+# Quality gate: warning-clean build (-Werror) + analyzer report + tests + lint.
+check: re analyze test lint
+
+# ThreadSanitizer build (concurrency debugging).
+tsan: CFLAGS=-O1 -g -Wall -Wextra -pthread -std=c11 -fsanitize=thread
+tsan: clean all
+
+.PHONY: lint analyze check tsan
