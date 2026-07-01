@@ -718,6 +718,7 @@ static void *client_thread(void *arg) {
 static void on_sigint(int sig) { (void)sig; g_running = 0; }
 
 int main(int argc, char **argv) {
+    signal(SIGPIPE, SIG_IGN);
     const char *host = "0.0.0.0"; int port = 5000;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--host") && i+1 < argc) host = argv[++i];

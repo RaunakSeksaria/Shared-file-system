@@ -67,7 +67,9 @@ int recv_line(int fd, char *buf, size_t buflen) {
 int send_all(int fd, const char *buf, size_t len) {
     size_t off = 0;
     while (off < len) {
-        ssize_t n = send(fd, buf + off, len - off, 0);
+        // MSG_NOSIGNAL: writing to a peer that has closed returns EPIPE instead of
+        // raising SIGPIPE (which would kill the server). All socket writes go through here.
+        ssize_t n = send(fd, buf + off, len - off, MSG_NOSIGNAL);
         if (n < 0) {
             if (errno == EINTR) continue;
             return -1;

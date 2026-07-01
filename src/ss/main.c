@@ -3,6 +3,7 @@
 // Phase 2: Now includes file scanning and storage management.
 #define _POSIX_C_SOURCE 200809L
 #include "common/xalloc.h"
+#include <signal.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -1957,6 +1958,7 @@ static void handle_command(Ctx *ctx, int client_fd, Message cmd_msg) {
 }
 
 int main(int argc, char **argv) {
+    signal(SIGPIPE, SIG_IGN);
     Ctx ctx = {0};
     ctx.nm_host = "127.0.0.1"; ctx.nm_port = 5000; ctx.host = "127.0.0.1"; ctx.client_port = 6001; ctx.storage_dir = "./storage_ss1"; ctx.username = "ss1"; ctx.running = 1;
     ctx.server_fd = -1;  // Initialize server_fd
