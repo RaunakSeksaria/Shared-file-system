@@ -5,6 +5,7 @@ throwaway storage directories, and drives the interactive client via pexpect.
 Each `cluster` fixture is function-scoped, so every test gets an isolated system.
 """
 
+import os
 import pathlib
 import signal
 import socket
@@ -40,9 +41,16 @@ def _wait_port(port: int, timeout: float = 5.0) -> bool:
 
 @pytest.fixture(scope="session", autouse=True)
 def _binaries():
-    """Build the project once per test session."""
+    """Build the project once per test session.
+
+    DFS_SANITIZE=asan|tsan builds that sanitizer variant (used by CI); otherwise a
+    normal build.
+    """
+    target = {"asan": ["make", "asan"], "tsan": ["make", "tsan"]}.get(
+        os.environ.get("DFS_SANITIZE"), ["make"]
+    )
     subprocess.run(
-        ["make"], cwd=REPO, check=True,
+        target, cwd=REPO, check=True,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     for b in (BIN_NM, BIN_SS, BIN_CLIENT):

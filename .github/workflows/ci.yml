@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: build • analyze • test • lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Build (warning-clean, -Werror)
+        run: make
+      - name: Static analysis (gcc -fanalyzer, advisory)
+        run: make analyze
+      - name: Integration tests (pytest + pexpect)
+        run: uv run --with pytest --with pexpect python -m pytest tests/ -q
+      - name: Lint the test suite
+        run: uv run --with ruff ruff check tests/
+
+  asan:
+    name: AddressSanitizer
+    runs-on: ubuntu-latest
+    env:
+      DFS_SANITIZE: asan          # conftest builds `make asan` instead of `make`
+      ASAN_OPTIONS: detect_leaks=0 # short-lived client/servers don't free at exit; keep error checks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Run the suite under AddressSanitizer
+        run: uv run --with pytest --with pexpect python -m pytest tests/ -q

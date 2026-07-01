@@ -45,4 +45,7 @@ check: re analyze test lint
 tsan: CFLAGS=-O1 -g -Wall -Wextra -pthread -std=c11 -fsanitize=thread
 tsan: clean all
 
-.PHONY: lint analyze check tsan
+.PHONY: lint analyze check tsan asan
+
+asan: CFLAGS=-O1 -g -Wall -Wextra -pthread -std=c11 -fsanitize=address -fno-omit-frame-pointer
+asan: clean all

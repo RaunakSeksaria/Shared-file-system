@@ -1,5 +1,7 @@
 # Distributed File System
 
+[![CI](https://github.com/RaunakSeksaria/Shared-file-system/actions/workflows/ci.yml/badge.svg)](https://github.com/RaunakSeksaria/Shared-file-system/actions/workflows/ci.yml)
+
 A distributed file system written from scratch in **C11** - a Name Server, replicated
 Storage Servers, and interactive Clients over TCP - with sentence-level write locking,
 access control, and storage-server **failover**. Metadata and coordination run through the
