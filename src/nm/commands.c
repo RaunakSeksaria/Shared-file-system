@@ -994,22 +994,31 @@ int handle_delete(int client_fd, const char *username, const char *filename) {
         return send_error_response(client_fd, "", username, &err);
     }
     
+    // index_remove_file() frees the FileEntry, so snapshot the fields we still need
+    // afterwards - using `entry` past the free is a use-after-free (caught by ASan).
+    char del_ss[sizeof(entry->ss_username)];
+    char del_name[sizeof(entry->filename)];
+    char del_folder[sizeof(entry->folder_path)];
+    snprintf(del_ss, sizeof(del_ss), "%s", entry->ss_username);
+    snprintf(del_name, sizeof(del_name), "%s", entry->filename);
+    snprintf(del_folder, sizeof(del_folder), "%s", entry->folder_path);
+
     // SS deleted file successfully - remove from index
     if (index_remove_file(filename) == 0) {
         log_info("nm_file_deleted", "file=%s owner=%s", filename, username);
-        registry_adjust_ss_file_count(entry->ss_username, -1);
-        
+        registry_adjust_ss_file_count(del_ss, -1);
+
         // Queue async replication deletion to backup SS
-        const char *replica = replication_get_replica(entry->ss_username);
+        const char *replica = replication_get_replica(del_ss);
         if (replica) {
-            if (replication_worker_queue(REPL_OP_DELETE, filename, entry->ss_username, replica) == 0) {
-                log_info("nm_replication_queued", "file=%s op=DELETE primary=%s replica=%s", 
-                         filename, entry->ss_username, replica);
+            if (replication_worker_queue(REPL_OP_DELETE, filename, del_ss, replica) == 0) {
+                log_info("nm_replication_queued", "file=%s op=DELETE primary=%s replica=%s",
+                         filename, del_ss, replica);
             }
         }
-        
+
         // Remove any pending access requests for this file
-        request_queue_remove_by_filename(entry->filename, entry->folder_path);
+        request_queue_remove_by_filename(del_name, del_folder);
 
         acl_cache_invalidate(full_path);
         
